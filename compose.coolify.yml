@@ -39,6 +39,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: "no"
     networks:
       - coolify
       - default
@@ -109,7 +110,7 @@ services:
       - default
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`dashboard.${DOMAIN}`)"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
