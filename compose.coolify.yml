@@ -26,8 +26,11 @@ services:
     depends_on:
       - db
     labels:
-      - "coolify.fqdn=https://adminer.nodepad.lex1001.cc"
-      - "coolify.port=8080"
+      - "traefik.enable=true"
+      - "traefik.http.routers.nodepad-adminer.rule=Host(`adminer.nodepad.lex1001.cc`)"
+      - "traefik.http.routers.nodepad-adminer.entrypoints=websecure"
+      - "traefik.http.routers.nodepad-adminer.tls=true"
+      - "traefik.http.services.nodepad-adminer.loadbalancer.server.port=8080"
 
   prestart:
     build:
@@ -82,8 +85,11 @@ services:
       timeout: 5s
       retries: 5
     labels:
-      - "coolify.fqdn=https://api.nodepad.lex1001.cc"
-      - "coolify.port=8000"
+      - "traefik.enable=true"
+      - "traefik.http.routers.nodepad-backend.rule=Host(`api.nodepad.lex1001.cc`)"
+      - "traefik.http.routers.nodepad-backend.entrypoints=websecure"
+      - "traefik.http.routers.nodepad-backend.tls=true"
+      - "traefik.http.services.nodepad-backend.loadbalancer.server.port=8000"
 
   frontend:
     build:
@@ -94,7 +100,11 @@ services:
         - NODE_ENV=production
     restart: always
     labels:
-      - "coolify.fqdn=https://nodepad.lex1001.cc"
-      - "coolify.port=80"
+      - "traefik.enable=true"
+      - "traefik.http.routers.nodepad-frontend.rule=Host(`nodepad.lex1001.cc`)"
+      - "traefik.http.routers.frontend-router.entrypoints=websecure"
+      - "traefik.http.routers.frontend-router.tls=true"
+      - "traefik.http.services.nodepad-frontend.loadbalancer.server.port=80"
+
 volumes:
   app-db-data: null
