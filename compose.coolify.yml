@@ -63,8 +63,6 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    labels:
-      - "coolify.fqdn=https://api.nodepad.lex1001.cc"
     restart: always
     networks:
       - coolify
@@ -98,6 +96,7 @@ services:
       - "traefik.http.routers.backend.tls=true"
       - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "coolify.fqdn=https://api.nodepad.lex1001.cc"
 
   frontend:
     build:
