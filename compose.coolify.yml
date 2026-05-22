@@ -27,6 +27,7 @@ services:
       - db
     labels:
       - "coolify.fqdn=https://adminer.nodepad.lex1001.cc"
+      - "coolify.port=8080"
 
   prestart:
     build:
@@ -82,6 +83,7 @@ services:
       retries: 5
     labels:
       - "coolify.fqdn=https://api.nodepad.lex1001.cc"
+      - "coolify.port=8000"
 
   frontend:
     build:
@@ -93,6 +95,6 @@ services:
     restart: always
     labels:
       - "coolify.fqdn=https://nodepad.lex1001.cc"
-
+      - "coolify.port=80"
 volumes:
   app-db-data: null
