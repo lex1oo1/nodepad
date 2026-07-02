@@ -17,9 +17,6 @@ api_router.include_router(utils_router)
 api_router.include_router(lists_router)
 api_router.include_router(nodes_router)
 
-@api_router.get("/sentry-debug")
-async def trigger_error():
-    division_by_zero = 1 / 0
 
 if settings.ENVIRONMENT == "local":
     api_router.include_router(private_router)
