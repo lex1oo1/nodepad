@@ -39,20 +39,28 @@ SQLAlchemy models.
 - `lists.py`: Defines the `Node` and `NodeList` tables.
 - **Invariant**: We use `ltree` for hierarchical queries and `Numeric(30, 15)` for fractional positions to prevent precision loss.
 
-### `frontend/src/routes/`
-TanStack Router definitions. This defines the "physical" structure of the application's pages.
+### `backend/app/schemas/`
+Pydantic v2 request/response schemas (`lists.py`, `users.py`).
 
-### `frontend/src/store/`
-Zustand stores. This is the **Client State Boundary**.
-- **Invariant**: UI components should read from the store rather than passing deep props.
+### `backend/app/main.py`
+FastAPI application entrypoint, CORS configuration, request-context logging middleware (`client_ip`, `request_id`, `user_agent`), and optional Sentry initialization (`SENTRY_DSN`, disabled when `ENVIRONMENT=local`).
+
+### `frontend/src/routes/`
+TanStack Router file-based route definitions (`_layout/lists.tsx`, `_layout/lists_.$listId.tsx`, `login.tsx`, `signup.tsx`, etc.). This defines the page structure and hosts route-level state and TanStack Query hooks.
+
+### `frontend/src/client/`
+Auto-generated OpenAPI TypeScript client (`@hey-api/openapi-ts`) synchronized from the FastAPI schema via `scripts/generate-client.sh`.
+
+### `frontend/src/hooks/` & State Management
+Server state and caching are managed via **TanStack Query** (`@tanstack/react-query`), paired with local React state (`useState`, `useRef`) for editing, focus, drag-and-drop (`@dnd-kit`), and undo history, plus shared hooks (`useAuth.ts`, `useMobile.ts`, etc.).
 
 ### `frontend/src/components/`
 UI components built with **Tailwind CSS 4** and **Radix UI**.
-- **Invariant**: Atomic components (buttons, inputs) are decoupled from application logic.
+- **Invariant**: Atomic components in `ui/` (buttons, inputs, dialogs) are decoupled from application logic.
 
 ## Architecture Invariants
 
-- **Unidirectional Data Flow**: Frontend state is updated via actions that trigger API calls, which in turn refresh the local store.
+- **Unidirectional Data Flow**: Frontend state is updated via user actions that trigger TanStack Query mutations, which in turn invalidate or optimistically update the query cache.
 - **Optimistic UI**: The frontend predicts the outcome of reordering actions to ensure a "snappy" keyboard-first experience.
 - **PostgreSQL Dependency**: The use of `ltree` means the backend specifically targets PostgreSQL. We do not aim for database-agnosticism.
 - **Stateless Backend**: The backend does not maintain server-side sessions. All authentication and authorization are handled via JWTs provided in the `Authorization` header.

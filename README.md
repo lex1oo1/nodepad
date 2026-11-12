@@ -1,9 +1,32 @@
-# Nodepad #
+# Nodepad
 
-Nodepad is a powerful, hierarchical outliner application designed for creating and managing nested lists with ease. It is inspired by modern outliner apps like Dynalist, Workflowy, and Checkvist.
+Nodepad is a hierarchical outliner application designed for creating and managing nested lists with a keyboard-first workflow. It is inspired by modern outliner apps like Dynalist, Workflowy, and Checkvist.
 
-**Current Version:** v.0.4 beta  
-**Status:** In active development. Online demo will be deployed soon.
+**Current Version:** v0.4 beta  
+**Status:** Active development — transitioning from prototype/pet project to a production-grade outliner (see [ROADMAP.md](ROADMAP.md)).
+
+---
+
+## Tech Stack
+
+- **Backend**: FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, PostgreSQL 18 (`ltree` extension + UUID v7), Sentry, `uv`
+- **Frontend**: React 19, TypeScript, Vite 7, TanStack Router, TanStack Query, Tailwind CSS 4, Radix UI, `@dnd-kit`, Biome, `bun`
+- **Infrastructure & Testing**: Docker Compose (with `watch`), Traefik / Coolify configs, `pytest` + coverage, Playwright E2E
+
+---
+
+## Documentation Index
+
+- [AI_INSTRUCTIONS.md](AI_INSTRUCTIONS.md) — AI-first coding rules, boundaries, and commands
+- [ARCHITECTURE.md](ARCHITECTURE.md) — High-level architecture, code map, and invariants
+- [TECH_STACK.md](TECH_STACK.md) — Exact dependencies, versions, and architectural decisions
+- [DATA_MODEL.md](DATA_MODEL.md) — Database schemas, indexes, and tree/ordering mechanics
+- [API_CONTRACTS.md](API_CONTRACTS.md) — REST endpoints, request/response schemas, and errors
+- [ROADMAP.md](ROADMAP.md) — Planned evolution toward production-grade PWA, typed nodes, and notifications
+- [LOG.md](LOG.md) — Development notes, UX/UI ideas, and change history
+- [backend/README.md](backend/README.md) — Backend setup, migrations, and data structures
+- [backend/specs.md](backend/specs.md) — Backend engineering rules and coding standards
+- [frontend/README.md](frontend/README.md) — Frontend setup, Biome linting, client generation, and Playwright tests
 
 ---
 
@@ -17,27 +40,77 @@ Nodepad is a powerful, hierarchical outliner application designed for creating a
 
 ---
 
-## Development Workflow
+## Getting Started
 
+### 1. Environment Configuration
 
-[Log - ideas and changes history](LOG.md)
-[Architecture - tech stack and architecture description](ARCHITECTURE.md)
+Copy `.env.example` to `.env` and adjust secrets/settings as needed:
 
-### Docker Compose Watch
+```bash
+cp .env.example .env
+```
 
-This project uses Docker Compose's native `watch` feature for a seamless development experience. It automatically syncs changes to the containers and rebuilds them when necessary.
+> **Note:** In `staging` or `production` (`ENVIRONMENT` != `local`), `backend/app/core/config.py` rejects default `"changethis"` values for `SECRET_KEY`, `POSTGRES_PASSWORD`, and `FIRST_SUPERUSER_PASSWORD`.
 
-To start development with watch mode:
+### 2. Run with Docker Compose
+
+This project uses Docker Compose's native `watch` feature for development:
+
 ```bash
 docker compose watch
 ```
 
-Alternatively, you can run:
+Alternatively:
+
 ```bash
 docker compose up --build
 ```
 
-### Keyboard Shortcuts
+For production/deployment configurations, see `compose.yml`, `compose.traefik.yml`, and `compose.coolify.yml`.
+
+---
+
+## Testing, Linting & Code Generation
+
+### Full Test Suite (Docker)
+
+```bash
+bash scripts/test.sh
+```
+
+Or against an already-running local stack:
+
+```bash
+bash scripts/test-local.sh
+```
+
+### Backend Checks (from `backend/`)
+
+```bash
+bash scripts/lint.sh       # mypy + ruff check
+bash scripts/format.sh     # ruff format
+bash scripts/tests-start.sh
+```
+
+### Frontend Checks (from `frontend/`)
+
+```bash
+bun run lint               # Biome check
+bun run build              # tsc + Vite build
+bun run test               # Playwright E2E tests
+```
+
+### Regenerate Frontend API Client
+
+Whenever FastAPI routes or Pydantic schemas change, regenerate `frontend/src/client/` from the repo root:
+
+```bash
+bash scripts/generate-client.sh
+```
+
+---
+
+## Keyboard Shortcuts
 
 Nodepad is designed to be keyboard-first. Use these shortcuts in the list editing screen:
 
@@ -54,6 +127,6 @@ Nodepad is designed to be keyboard-first. Use these shortcuts in the list editin
 
 ---
 
-## Disclaimer #
+## Disclaimer
 
-This project is a practice application created to improve my skills in frontend and backend development. It is **not an official product**. All design elements and content are original or freely available for use.
+This project started as a practice application and is **not an official product**. All design elements and content are original or freely available for use.
