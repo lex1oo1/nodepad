@@ -9,14 +9,16 @@ import {
 
 export function Shortcuts() {
   const shortcuts = [
-    { key: "Enter", description: "Save and finish editing" },
-    { key: "Shift + Enter", description: "Create a new child node" },
+    { key: "Enter", description: "Create sibling node below" },
+    { key: "Shift + Enter", description: "Create child node" },
     { key: "Tab", description: "Indent node (move right)" },
     { key: "Shift + Tab", description: "Outdent node (move left)" },
-    { key: "↑ / ↓ Arrows", description: "Navigate between nodes" },
+    { key: "↑ / ↓ Arrows", description: "Navigate between visible nodes" },
+    { key: "Ctrl + ↑ / ↓", description: "Move node up/down among siblings" },
+    { key: "Ctrl + .", description: "Zoom into / out of node subtree" },
     { key: "Backspace", description: "Delete empty node" },
-    { key: "Ctrl + Z", description: "Undo node edit/delete" },
-    { key: "Escape", description: "Cancel editing" },
+    { key: "Ctrl + Z", description: "Undo node delete" },
+    { key: "Escape", description: "Cancel editing / exit zoom" },
   ]
 
   return (
@@ -28,7 +30,10 @@ export function Shortcuts() {
       <SidebarGroupContent>
         <SidebarMenu className="px-2 py-1">
           {shortcuts.map((s) => (
-            <SidebarMenuItem key={s.key} className="flex flex-col mb-2 last:mb-0">
+            <SidebarMenuItem
+              key={s.key}
+              className="flex flex-col mb-2 last:mb-0"
+            >
               <span className="text-[10px] font-mono font-bold bg-muted px-1.5 py-0.5 rounded border border-muted-foreground/20 w-fit text-muted-foreground uppercase">
                 {s.key}
               </span>

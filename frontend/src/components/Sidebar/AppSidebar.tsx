@@ -22,9 +22,12 @@ export function AppSidebar() {
 
   const params = useParams({ strict: false }) as Record<string, string>
   const state = useRouterState()
-  
+
   // Try to get listId from params, or from the first match that has it
-  const listId = params?.listId || (state.matches.find(m => (m.params as any)?.listId)?.params as any)?.listId
+  const listId =
+    params?.listId ||
+    (state.matches.find((m) => (m.params as any)?.listId)?.params as any)
+      ?.listId
 
   const { data: list } = useQuery({
     queryKey: ["lists", listId],
