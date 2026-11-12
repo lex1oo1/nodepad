@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ListsReadListsData, ListsReadListsResponse, ListsCreateListData, ListsCreateListResponse, ListsReadListData, ListsReadListResponse, ListsUpdateListData, ListsUpdateListResponse, ListsDeleteListData, ListsDeleteListResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, NodesCreateNodeData, NodesCreateNodeResponse, NodesPatchNodeData, NodesPatchNodeResponse, NodesReorderNodeData, NodesReorderNodeResponse, NodesDeleteNodeData, NodesDeleteNodeResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ListsReadListsData, ListsReadListsResponse, ListsCreateListData, ListsCreateListResponse, ListsReadListData, ListsReadListResponse, ListsUpdateListData, ListsUpdateListResponse, ListsDeleteListData, ListsDeleteListResponse, LoginStartDemoSessionResponse, LoginCleanupDemoSessionResponse, LoginResetDemoSessionResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, NodesCreateNodeData, NodesCreateNodeResponse, NodesPatchNodeData, NodesPatchNodeResponse, NodesDeleteNodeData, NodesDeleteNodeResponse, NodesReorderNodeData, NodesReorderNodeResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class ListsService {
     /**
@@ -117,6 +117,45 @@ export class ListsService {
 }
 
 export class LoginService {
+    /**
+     * Start Demo Session
+     * Start an ephemeral demo session with a fresh copy of the default outliner list.
+     * @returns DemoSession Successful Response
+     * @throws ApiError
+     */
+    public static startDemoSession(): CancelablePromise<LoginStartDemoSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/login/demo'
+        });
+    }
+    
+    /**
+     * Cleanup Demo Session
+     * Clean up demo user and all their lists/nodes upon session exit or window close.
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static cleanupDemoSession(): CancelablePromise<LoginCleanupDemoSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/login/demo/cleanup'
+        });
+    }
+    
+    /**
+     * Reset Demo Session
+     * Reset the demo user's outline back to the default state.
+     * @returns DemoSession Successful Response
+     * @throws ApiError
+     */
+    public static resetDemoSession(): CancelablePromise<LoginResetDemoSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/login/demo/reset'
+        });
+    }
+    
     /**
      * Login Access Token
      * OAuth2 compatible token login, get an access token for future requests
@@ -263,6 +302,27 @@ export class NodesService {
     }
     
     /**
+     * Delete Node
+     * Delete a node.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteNode(data: NodesDeleteNodeData): CancelablePromise<NodesDeleteNodeResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/nodes/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Reorder Node
      * Reorder node.
      * @param data The data for the request.
@@ -282,27 +342,6 @@ export class NodesService {
             query: {
                 before_id: data.beforeId,
                 after_id: data.afterId
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Delete Node
-     * Delete a node.
-     * @param data The data for the request.
-     * @param data.id
-     * @returns Message Successful Response
-     * @throws ApiError
-     */
-    public static deleteNode(data: NodesDeleteNodeData): CancelablePromise<NodesDeleteNodeResponse> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/nodes/{id}',
-            path: {
-                id: data.id
             },
             errors: {
                 422: 'Validation Error'

@@ -23,6 +23,9 @@ REST API specification derived from `backend/app/api/main.py`, `backend/app/api/
 
 | Method | Path | Auth | Request | Response | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/login/demo` | Public | — | `DemoSession` (`access_token`, `token_type`, `list_id`) | Creates ephemeral demo user and copies "Weekend Getaway: Chamonix" |
+| `POST` | `/login/demo/cleanup` | User (Demo) | — | `Message` | Deletes demo user and all their lists/nodes upon session exit or window close |
+| `POST` | `/login/demo/reset` | User (Demo) | — | `DemoSession` (`access_token`, `token_type`, `list_id`) | Resets demo user's outline back to default state |
 | `POST` | `/login/access-token` | Public | Form `OAuth2PasswordRequestForm` (`username`, `password`) | `Token` (`access_token`, `token_type="bearer"`) | `400` on bad credentials or inactive user |
 | `POST` | `/login/test-token` | User | — | `UserPublic` | Validates current Bearer token |
 | `POST` | `/password-recovery/{email}` | Public | Path `email: str` | `Message` | Always returns generic message to prevent enumeration |

@@ -1,15 +1,28 @@
-from datetime import timedelta
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core import security
 from app.core.config import settings
-from app.schemas import Message, NewPassword, Token, UserPublic, UserUpdate
+from app.core.db import create_default_chamonix_list
+from app.models import NodeList, User
+from app.schemas import (
+    DemoSession,
+    Message,
+    NewPassword,
+    Token,
+    UserCreate,
+    UserPublic,
+    UserUpdate,
+)
 from app.utils import (
     generate_password_reset_token,
     generate_reset_password_email,
@@ -18,6 +31,104 @@ from app.utils import (
 )
 
 login_router = APIRouter(tags=["login"])
+
+
+@login_router.post("/login/demo", response_model=DemoSession)
+def start_demo_session(session: SessionDep) -> DemoSession:
+    """
+    Start an ephemeral demo session with a fresh copy of the default outliner list.
+    """
+    # 1. Clean up stale demo sessions (> 2 hours old)
+    stale_threshold = datetime.now(timezone.utc) - timedelta(hours=2)
+    stale_demos = list(
+        session.execute(
+            select(User).where(
+                User.email.like("demo_%@nodepad.io"),
+                User.created_at < stale_threshold,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for stale in stale_demos:
+        session.delete(stale)
+    if stale_demos:
+        session.commit()
+
+    # 2. Create isolated ephemeral demo user
+    demo_email = f"demo_{uuid.uuid4().hex[:12]}@nodepad.io"
+    user_in = UserCreate(
+        email=demo_email,
+        password=secrets.token_urlsafe(16),
+        full_name="Demo User",
+        is_active=True,
+        is_superuser=False,
+    )
+    demo_user = crud.users.create_user(session=session, user_create=user_in)
+
+    # 3. Create fresh copy of default 'Weekend Getaway: Chamonix' list
+    db_list = create_default_chamonix_list(session=session, owner_id=demo_user.id)
+
+    # 4. Generate token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = security.create_access_token(
+        demo_user.id, expires_delta=access_token_expires
+    )
+    return DemoSession(
+        access_token=token,
+        token_type="bearer",
+        list_id=db_list.id,
+    )
+
+
+@login_router.post("/login/demo/cleanup", response_model=Message)
+def cleanup_demo_session(session: SessionDep, current_user: CurrentUser) -> Message:
+    """
+    Clean up demo user and all their lists/nodes upon session exit or window close.
+    """
+    if not current_user.email.startswith("demo_") or not current_user.email.endswith(
+        "@nodepad.io"
+    ):
+        raise HTTPException(
+            status_code=400, detail="Only demo sessions can be cleaned up"
+        )
+
+    session.delete(current_user)
+    session.commit()
+    return Message(message="Demo session cleaned up successfully")
+
+
+@login_router.post("/login/demo/reset", response_model=DemoSession)
+def reset_demo_session(session: SessionDep, current_user: CurrentUser) -> DemoSession:
+    """
+    Reset the demo user's outline back to the default state.
+    """
+    if not current_user.email.startswith("demo_") or not current_user.email.endswith(
+        "@nodepad.io"
+    ):
+        raise HTTPException(status_code=400, detail="Only demo sessions can be reset")
+
+    # Delete existing lists and nodes owned by this demo user
+    lists = list(
+        session.execute(select(NodeList).where(NodeList.owner_id == current_user.id))
+        .scalars()
+        .all()
+    )
+    for list_obj in lists:
+        session.delete(list_obj)
+    session.commit()
+
+    # Recreate default Chamonix list
+    db_list = create_default_chamonix_list(session=session, owner_id=current_user.id)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = security.create_access_token(
+        current_user.id, expires_delta=access_token_expires
+    )
+    return DemoSession(
+        access_token=token,
+        token_type="bearer",
+        list_id=db_list.id,
+    )
 
 
 @login_router.post("/login/access-token")

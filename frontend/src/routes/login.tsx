@@ -4,11 +4,13 @@ import {
   Link as RouterLink,
   redirect,
 } from "@tanstack/react-router"
+import { Sparkles } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
+import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
@@ -51,7 +53,7 @@ export const Route = createFileRoute("/login")({
 })
 
 function Login() {
-  const { loginMutation } = useAuth()
+  const { loginMutation, demoMutation } = useAuth()
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -63,7 +65,7 @@ function Login() {
   })
 
   const onSubmit = (data: FormData) => {
-    if (loginMutation.isPending) return
+    if (loginMutation.isPending || demoMutation.isPending) return
     loginMutation.mutate(data)
   }
 
@@ -127,6 +129,30 @@ function Login() {
             <LoadingButton type="submit" loading={loginMutation.isPending}>
               Log In
             </LoadingButton>
+
+            <div className="relative my-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or test without account
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => demoMutation.mutate()}
+              disabled={demoMutation.isPending || loginMutation.isPending}
+              className="w-full flex items-center justify-center gap-2 border-dashed hover:border-solid hover:bg-accent/60 transition-all font-medium"
+            >
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              {demoMutation.isPending
+                ? "Setting up demo..."
+                : "Try Demo Session"}
+            </Button>
           </div>
 
           <div className="text-center text-sm">
