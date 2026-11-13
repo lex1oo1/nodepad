@@ -190,3 +190,53 @@ def test_login_with_argon2_password_keeps_hash(client: TestClient, db: Session) 
 
     assert user.hashed_password == original_hash
     assert user.hashed_password.startswith("$argon2")
+
+
+def test_demo_session_flow(client: TestClient) -> None:
+    # 1. Start demo session
+    r = client.post(f"{settings.API_V1_STR}/login/demo")
+    assert r.status_code == 200
+    demo_data = r.json()
+    assert "access_token" in demo_data
+    assert "list_id" in demo_data
+    token = demo_data["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Verify demo user can read their list
+    list_r = client.get(
+        f"{settings.API_V1_STR}/lists/{demo_data['list_id']}",
+        headers=headers,
+    )
+    assert list_r.status_code == 200
+    list_json = list_r.json()
+    assert list_json["title"] == "Weekend Getaway: Chamonix"
+    assert len(list_json["nodes"]) > 0
+
+    # 3. Reset demo session
+    reset_r = client.post(
+        f"{settings.API_V1_STR}/login/demo/reset",
+        headers=headers,
+    )
+    assert reset_r.status_code == 200
+    new_demo_data = reset_r.json()
+    assert "access_token" in new_demo_data
+    assert "list_id" in new_demo_data
+
+    # 4. Clean up demo session
+    cleanup_r = client.post(
+        f"{settings.API_V1_STR}/login/demo/cleanup",
+        headers={"Authorization": f"Bearer {new_demo_data['access_token']}"},
+    )
+    assert cleanup_r.status_code == 200
+    assert cleanup_r.json() == {"message": "Demo session cleaned up successfully"}
+
+
+def test_demo_cleanup_forbidden_for_regular_user(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/login/demo/cleanup",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Only demo sessions can be cleaned up"

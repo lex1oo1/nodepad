@@ -29,6 +29,14 @@ test("Log In button is visible", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
 })
 
+test("Try Demo Session button is visible", async ({ page }) => {
+  await page.goto("/login")
+
+  await expect(
+    page.getByRole("button", { name: "Try Demo Session" }),
+  ).toBeVisible()
+})
+
 test("Forgot Password link is visible", async ({ page }) => {
   await page.goto("/login")
 

@@ -76,4 +76,32 @@ test.describe("Node tree interactions", () => {
     )
     expect(parseInt(padding, 10)).toBe(20) // Only one level deeper than "Logistical Prep"
   })
+
+  test("ArrowDown when unfocused should focus top node", async ({ page }) => {
+    // Ensure no input is focused
+    await page.keyboard.press("Escape")
+    await expect(page.locator("input")).toHaveCount(0)
+
+    // Press ArrowDown
+    await page.keyboard.press("ArrowDown")
+
+    // The first visible node's input should now be visible and focused
+    const input = page.locator("input").first()
+    await expect(input).toBeVisible()
+    await expect(input).toBeFocused()
+  })
+
+  test("ArrowUp when unfocused should focus bottom node", async ({ page }) => {
+    // Ensure no input is focused
+    await page.keyboard.press("Escape")
+    await expect(page.locator("input")).toHaveCount(0)
+
+    // Press ArrowUp
+    await page.keyboard.press("ArrowUp")
+
+    // An input should now be visible and focused
+    const input = page.locator("input").first()
+    await expect(input).toBeVisible()
+    await expect(input).toBeFocused()
+  })
 })
