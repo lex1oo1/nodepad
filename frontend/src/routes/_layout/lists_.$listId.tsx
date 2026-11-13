@@ -107,6 +107,24 @@ function ListDetailContent({ listId }: { listId: string }) {
     [nodeMap, zoomRootId],
   )
 
+  const handleAddRootNode = useCallback(() => {
+    const parentId = zoomRootId ?? null
+    const siblings = childrenMap.get(parentId) ?? []
+    const lastSibling = siblings[siblings.length - 1]
+    const parentNode = parentId ? nodeMap.get(parentId) : undefined
+    const position = computeMidpointPosition(lastSibling?.position, undefined)
+    const newId = crypto.randomUUID()
+
+    createMutation.mutate({
+      id: newId,
+      content: "",
+      parent_id: parentId,
+      position,
+      level: parentNode ? parentNode.level + 1 : 0,
+    })
+    setEditingId(newId)
+  }, [zoomRootId, childrenMap, nodeMap, createMutation])
+
   const handleUndoDelete = useCallback(() => {
     if (!lastDeletedNode) return
     createMutation.mutate({
@@ -121,6 +139,15 @@ function ListDetailContent({ listId }: { listId: string }) {
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const isTypingInOtherInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
+      if (isTypingInOtherInput) return
+
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !editingId) {
         e.preventDefault()
         handleUndoDelete()
@@ -129,11 +156,40 @@ function ListDetailContent({ listId }: { listId: string }) {
       if (e.key === "Escape" && !editingId && zoomRootId) {
         e.preventDefault()
         setZoomRootId(null)
+        return
+      }
+
+      if (!editingId) {
+        if (visibleNodes.length > 0) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault()
+            setEditingId(visibleNodes[0].node.id)
+            return
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault()
+            setEditingId(visibleNodes[visibleNodes.length - 1].node.id)
+            return
+          }
+          if (e.key === "Enter") {
+            e.preventDefault()
+            setEditingId(visibleNodes[0].node.id)
+            return
+          }
+        } else if (
+          e.key === "ArrowDown" ||
+          e.key === "ArrowUp" ||
+          e.key === "Enter"
+        ) {
+          e.preventDefault()
+          handleAddRootNode()
+          return
+        }
       }
     }
     window.addEventListener("keydown", handleGlobalKeyDown)
     return () => window.removeEventListener("keydown", handleGlobalKeyDown)
-  }, [handleUndoDelete, editingId, zoomRootId])
+  }, [handleUndoDelete, editingId, zoomRootId, visibleNodes, handleAddRootNode])
 
   const handleStartEdit = useCallback((node: OutlinerNode) => {
     setEditingId(node.id)
@@ -256,24 +312,6 @@ function ListDetailContent({ listId }: { listId: string }) {
     },
     [childrenMap, handleCommitContent, createMutation],
   )
-
-  const handleAddRootNode = useCallback(() => {
-    const parentId = zoomRootId ?? null
-    const siblings = childrenMap.get(parentId) ?? []
-    const lastSibling = siblings[siblings.length - 1]
-    const parentNode = parentId ? nodeMap.get(parentId) : undefined
-    const position = computeMidpointPosition(lastSibling?.position, undefined)
-    const newId = crypto.randomUUID()
-
-    createMutation.mutate({
-      id: newId,
-      content: "",
-      parent_id: parentId,
-      position,
-      level: parentNode ? parentNode.level + 1 : 0,
-    })
-    setEditingId(newId)
-  }, [zoomRootId, childrenMap, nodeMap, createMutation])
 
   const handleMoveFocus = useCallback(
     (nodeId: string, direction: "up" | "down", currentDraft: string) => {

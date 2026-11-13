@@ -74,7 +74,11 @@ export const NodeRow = memo(function NodeRow({
       setDraftContent(node.content)
       skipBlurCommitRef.current = false
       requestAnimationFrame(() => {
-        inputRef.current?.focus()
+        if (inputRef.current) {
+          inputRef.current.focus()
+          const len = inputRef.current.value.length
+          inputRef.current.setSelectionRange(len, len)
+        }
       })
     }
   }, [isEditing, node.content])

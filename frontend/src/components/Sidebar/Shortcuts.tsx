@@ -13,7 +13,10 @@ export function Shortcuts() {
     { key: "Shift + Enter", description: "Create child node" },
     { key: "Tab", description: "Indent node (move right)" },
     { key: "Shift + Tab", description: "Outdent node (move left)" },
-    { key: "↑ / ↓ Arrows", description: "Navigate between visible nodes" },
+    {
+      key: "↑ / ↓ Arrows",
+      description: "Navigate nodes (or enter list if unfocused)",
+    },
     { key: "Ctrl + ↑ / ↓", description: "Move node up/down among siblings" },
     { key: "Ctrl + .", description: "Zoom into / out of node subtree" },
     { key: "Backspace", description: "Delete empty node" },
