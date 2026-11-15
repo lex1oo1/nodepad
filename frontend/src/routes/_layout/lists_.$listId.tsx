@@ -75,11 +75,13 @@ function ListDetailContent({ listId }: { listId: string }) {
   const { createMutation, updateMutation, reorderMutation, deleteMutation } =
     useOutlinerMutations(listId)
 
+  const MAX_UNDO_HISTORY = 100
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [zoomRootId, setZoomRootId] = useState<string | null>(null)
-  const [deletedHistory, setDeletedHistory] = useState<OutlinerNode[][]>([])
+  const deletedHistoryRef = useRef<OutlinerNode[][]>([])
+  const [undoCount, setUndoCount] = useState(0)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -133,10 +135,13 @@ function ListDetailContent({ listId }: { listId: string }) {
   }, [zoomRootId, childrenMap, nodeMap, createMutation])
 
   const handleUndoDelete = useCallback(async () => {
-    const subtree = deletedHistory[deletedHistory.length - 1]
-    if (!subtree || subtree.length === 0) return
+    const subtree = deletedHistoryRef.current.pop()
+    if (!subtree || subtree.length === 0) {
+      setUndoCount(0)
+      return
+    }
 
-    setDeletedHistory((prev) => prev.slice(0, -1))
+    setUndoCount(deletedHistoryRef.current.length)
     const rootNode = subtree[0]
     setFocusedId(rootNode.id)
     setEditingId(rootNode.id)
@@ -150,7 +155,7 @@ function ListDetailContent({ listId }: { listId: string }) {
         level: node.level,
       })
     }
-  }, [deletedHistory, createMutation])
+  }, [createMutation])
 
   const handleFocusNode = useCallback((node: OutlinerNode) => {
     setFocusedId(node.id)
@@ -335,11 +340,16 @@ function ListDetailContent({ listId }: { listId: string }) {
         return result
       }
 
-      setDeletedHistory((prev) => [...prev, collectSubtree(node)])
+      const nextHistory = [...deletedHistoryRef.current, collectSubtree(node)]
+      if (nextHistory.length > MAX_UNDO_HISTORY) {
+        nextHistory.shift()
+      }
+      deletedHistoryRef.current = nextHistory
+      setUndoCount(nextHistory.length)
       deleteMutation.mutate(node.id)
       const nextId = prevNode ? prevNode.id : null
       setFocusedId(nextId)
-      setEditingId(nextId)
+      setEditingId(null)
     },
     [visibleNodes, childrenMap, deleteMutation],
   )
@@ -599,7 +609,7 @@ function ListDetailContent({ listId }: { listId: string }) {
                   onReorderSibling={handleReorderSibling}
                   onZoom={handleZoom}
                   onDeleteEmpty={handleDeleteEmpty}
-                  canUndoDelete={deletedHistory.length > 0}
+                  canUndoDelete={undoCount > 0}
                   onUndoDelete={handleUndoDelete}
                 />
               ))}

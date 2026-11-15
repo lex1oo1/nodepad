@@ -1,21 +1,21 @@
 import { expect, test } from "@playwright/test"
-import { logInUser } from "./utils/user"
+
+test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe("Node tree interactions", () => {
   test.beforeEach(async ({ page }) => {
-    await logInUser(page, "admin@nodepad.io", "Gr33nWh33lBr!ck")
-    await page.goto("/lists")
-    // Wait for lists to load
-    await expect(page.getByText("Weekend Getaway: Chamonix")).toBeVisible()
-    const listLink = page.getByText("Weekend Getaway: Chamonix")
-    await listLink.click()
-    await page.waitForLoadState("networkidle")
+    await page.goto("/login")
+    await page.getByRole("button", { name: "Try Demo Session" }).click()
+    await page.waitForURL(/\/lists\/.+/)
+    await expect(page.getByText("Logistical Prep")).toBeVisible()
   })
 
   test("Tab should indent node and maintain focus", async ({ page }) => {
     // 1. Find a node that can be indented (not the first one)
-    // "Logistical Prep" is usually first, "Activities" is second in seed
-    const targetNode = page.getByRole("button", { name: "Activities" })
+    // "Logistical Prep" is first, "Grocery Run (Whole Foods)" is second root in seed
+    const targetNode = page.getByRole("button", {
+      name: "Grocery Run (Whole Foods)",
+    })
     await expect(targetNode).toBeVisible()
 
     // 2. Start editing via double-click
@@ -24,9 +24,7 @@ test.describe("Node tree interactions", () => {
     await expect(input).toBeFocused()
 
     // 3. Measure initial padding
-    const container = page
-      .locator("div.group")
-      .filter({ hasText: "Activities" })
+    const container = page.locator("div.group[data-editing='true']")
     const initialPadding = await container.evaluate(
       (el) => window.getComputedStyle(el).paddingLeft,
     )
@@ -56,7 +54,8 @@ test.describe("Node tree interactions", () => {
   })
 
   test("Tab should not indent beyond prev.level + 1", async ({ page }) => {
-    const targetNode = page.getByRole("button", { name: "Activities" })
+    // "Transportation" is level 1 directly under "Logistical Prep" (level 0)
+    const targetNode = page.getByRole("button", { name: "Transportation" })
     await targetNode.dblclick()
     const input = page.locator("input").first()
 
@@ -66,11 +65,9 @@ test.describe("Node tree interactions", () => {
     await input.press("Tab")
     await page.waitForTimeout(300)
 
-    // Since "Activities" is below "Logistical Prep" (level 0),
+    // Since "Transportation" is below "Logistical Prep" (level 0),
     // it can only reach level 1.
-    const container = page
-      .locator("div.group")
-      .filter({ hasText: "Activities" })
+    const container = page.locator("div.group[data-editing='true']")
     const padding = await container.evaluate(
       (el) => window.getComputedStyle(el).paddingLeft,
     )
@@ -165,6 +162,14 @@ test.describe("Node tree interactions", () => {
     await activeInput.press("Enter")
     activeInput = page.locator("input").first()
     await activeInput.fill("Temp Sibling 2")
+    // Commit "Temp Sibling 2" via blur so it's saved in the node before deletion/undo
+    await activeInput.blur()
+    await expect(
+      page.getByRole("button", { name: "Temp Sibling 2" }),
+    ).toBeVisible()
+    await page.getByRole("button", { name: "Temp Sibling 2" }).dblclick()
+    activeInput = page.locator("input").first()
+    await expect(activeInput).toHaveValue("Temp Sibling 2")
 
     // Delete "Temp Sibling 2" text, then press Backspace one more time to delete the node
     await activeInput.press("Control+a")
@@ -174,8 +179,11 @@ test.describe("Node tree interactions", () => {
     await expect(
       page.getByRole("button", { name: "Temp Sibling 2" }),
     ).toHaveCount(0)
+    // Editing focus should be lost after deleting a node
+    await expect(page.locator("input")).toHaveCount(0)
 
-    // Delete "Temp Sibling 1" text, then press Backspace one more time to delete the node
+    // Re-enter edit mode on focused "Temp Sibling 1", clear text, and delete with Backspace
+    await page.keyboard.press("Enter")
     activeInput = page.locator("input").first()
     await expect(activeInput).toBeFocused()
     await expect(activeInput).toHaveValue("Temp Sibling 1")
@@ -186,6 +194,7 @@ test.describe("Node tree interactions", () => {
     await expect(
       page.getByRole("button", { name: "Temp Sibling 1" }),
     ).toHaveCount(0)
+    await expect(page.locator("input")).toHaveCount(0)
 
     // Undo twice with Ctrl+Z to restore both deleted siblings
     await page.keyboard.press("Control+z")
