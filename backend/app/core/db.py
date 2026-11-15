@@ -89,8 +89,11 @@ def init_db(session: Session) -> None:
     # 2. Create default hierarchical list if it doesn't exist
     list_title = "Weekend Getaway: Chamonix"
     db_list = session.execute(
-        select(NodeList).where(NodeList.title == list_title)
-    ).scalar_one_or_none()
+        select(NodeList).where(
+            NodeList.title == list_title,
+            NodeList.owner_id == user.id,
+        )
+    ).scalars().first()
 
     if not db_list:
         create_default_chamonix_list(session=session, owner_id=user.id)

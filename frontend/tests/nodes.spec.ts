@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 import { logInUser } from "./utils/user"
 
 test.describe("Nodes management", () => {
-  test("Edit a node content via click and Enter", async ({ page }) => {
+  test("Edit a node content via double-click and Enter", async ({ page }) => {
     // 1. Login as admin (has the default list from init_db)
     await logInUser(page, "admin@nodepad.io", "Gr33nWh33lBr!ck")
 
@@ -20,12 +20,16 @@ test.describe("Nodes management", () => {
     // 4. Wait for nodes to load
     await expect(page.getByText("Logistical Prep")).toBeVisible()
 
-    // 5. Click on a node to edit (Confirm Airbnb...)
+    // 5. Single-click focuses the node without entering edit mode
     const nodeText = "Confirm Airbnb check-in time"
     const nodeElement = page.getByRole("button", { name: nodeText })
     await nodeElement.click()
+    await expect(page.locator("input")).toHaveCount(0)
 
-    // 6. Type new text and press Enter
+    // 6. Double-click on the node to enter edit mode
+    await nodeElement.dblclick()
+
+    // 7. Type new text and press Enter
     const newText = "Confirm Airbnb check-in time (Updated)"
     // The input should appear with the current text as value
     const input = page.locator("input")

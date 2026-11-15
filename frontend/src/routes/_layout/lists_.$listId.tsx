@@ -16,7 +16,14 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
 import { NodeRow } from "@/components/Outliner/NodeRow"
 import { OutlinerBreadcrumbs } from "@/components/Outliner/OutlinerBreadcrumbs"
@@ -69,11 +76,10 @@ function ListDetailContent({ listId }: { listId: string }) {
     useOutlinerMutations(listId)
 
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const [focusedId, setFocusedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [zoomRootId, setZoomRootId] = useState<string | null>(null)
-  const [lastDeletedNode, setLastDeletedNode] = useState<OutlinerNode | null>(
-    null,
-  )
+  const [deletedHistory, setDeletedHistory] = useState<OutlinerNode[][]>([])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -122,76 +128,37 @@ function ListDetailContent({ listId }: { listId: string }) {
       position,
       level: parentNode ? parentNode.level + 1 : 0,
     })
+    setFocusedId(newId)
     setEditingId(newId)
   }, [zoomRootId, childrenMap, nodeMap, createMutation])
 
-  const handleUndoDelete = useCallback(() => {
-    if (!lastDeletedNode) return
-    createMutation.mutate({
-      id: lastDeletedNode.id,
-      content: lastDeletedNode.content,
-      parent_id: lastDeletedNode.parent_id ?? null,
-      position: lastDeletedNode.position,
-      level: lastDeletedNode.level,
-    })
-    setLastDeletedNode(null)
-  }, [lastDeletedNode, createMutation])
+  const handleUndoDelete = useCallback(async () => {
+    const subtree = deletedHistory[deletedHistory.length - 1]
+    if (!subtree || subtree.length === 0) return
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const isTypingInOtherInput =
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
+    setDeletedHistory((prev) => prev.slice(0, -1))
+    const rootNode = subtree[0]
+    setFocusedId(rootNode.id)
+    setEditingId(rootNode.id)
 
-      if (isTypingInOtherInput) return
-
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !editingId) {
-        e.preventDefault()
-        handleUndoDelete()
-        return
-      }
-      if (e.key === "Escape" && !editingId && zoomRootId) {
-        e.preventDefault()
-        setZoomRootId(null)
-        return
-      }
-
-      if (!editingId) {
-        if (visibleNodes.length > 0) {
-          if (e.key === "ArrowDown") {
-            e.preventDefault()
-            setEditingId(visibleNodes[0].node.id)
-            return
-          }
-          if (e.key === "ArrowUp") {
-            e.preventDefault()
-            setEditingId(visibleNodes[visibleNodes.length - 1].node.id)
-            return
-          }
-          if (e.key === "Enter") {
-            e.preventDefault()
-            setEditingId(visibleNodes[0].node.id)
-            return
-          }
-        } else if (
-          e.key === "ArrowDown" ||
-          e.key === "ArrowUp" ||
-          e.key === "Enter"
-        ) {
-          e.preventDefault()
-          handleAddRootNode()
-          return
-        }
-      }
+    for (const node of subtree) {
+      await createMutation.mutateAsync({
+        id: node.id,
+        content: node.content,
+        parent_id: node.parent_id ?? null,
+        position: node.position,
+        level: node.level,
+      })
     }
-    window.addEventListener("keydown", handleGlobalKeyDown)
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
-  }, [handleUndoDelete, editingId, zoomRootId, visibleNodes, handleAddRootNode])
+  }, [deletedHistory, createMutation])
+
+  const handleFocusNode = useCallback((node: OutlinerNode) => {
+    setFocusedId(node.id)
+    setEditingId((prev) => (prev === node.id ? prev : null))
+  }, [])
 
   const handleStartEdit = useCallback((node: OutlinerNode) => {
+    setFocusedId(node.id)
     setEditingId(node.id)
   }, [])
 
@@ -280,6 +247,7 @@ function ListDetailContent({ listId }: { listId: string }) {
         position,
         level: node.level,
       })
+      setFocusedId(newId)
       setEditingId(newId)
     },
     [childrenMap, handleCommitContent, createMutation],
@@ -308,6 +276,7 @@ function ListDetailContent({ listId }: { listId: string }) {
         position,
         level: node.level + 1,
       })
+      setFocusedId(newId)
       setEditingId(newId)
     },
     [childrenMap, handleCommitContent, createMutation],
@@ -321,7 +290,9 @@ function ListDetailContent({ listId }: { listId: string }) {
       if (targetIdx < 0 || targetIdx >= visibleNodes.length) return
 
       handleCommitContent(visibleNodes[idx].node, currentDraft)
-      setEditingId(visibleNodes[targetIdx].node.id)
+      const targetId = visibleNodes[targetIdx].node.id
+      setFocusedId(targetId)
+      setEditingId(targetId)
     },
     [visibleNodes, handleCommitContent],
   )
@@ -354,17 +325,164 @@ function ListDetailContent({ listId }: { listId: string }) {
     (node: OutlinerNode) => {
       const idx = visibleNodes.findIndex((item) => item.node.id === node.id)
       const prevNode = idx > 0 ? visibleNodes[idx - 1].node : null
-      setLastDeletedNode(node)
+
+      const collectSubtree = (root: OutlinerNode): OutlinerNode[] => {
+        const result: OutlinerNode[] = [root]
+        const children = childrenMap.get(root.id) ?? []
+        for (const child of children) {
+          result.push(...collectSubtree(child))
+        }
+        return result
+      }
+
+      setDeletedHistory((prev) => [...prev, collectSubtree(node)])
       deleteMutation.mutate(node.id)
-      setEditingId(prevNode ? prevNode.id : null)
+      const nextId = prevNode ? prevNode.id : null
+      setFocusedId(nextId)
+      setEditingId(nextId)
     },
-    [visibleNodes, deleteMutation],
+    [visibleNodes, childrenMap, deleteMutation],
   )
 
   const handleZoom = useCallback((nodeId: string) => {
     setZoomRootId((prev) => (prev === nodeId ? null : nodeId))
+    setFocusedId(null)
     setEditingId(null)
   }, [])
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const isTypingInOtherInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
+      const isMod = e.ctrlKey || e.metaKey
+
+      if (
+        !isTypingInOtherInput &&
+        isMod &&
+        e.key.toLowerCase() === "z" &&
+        !e.shiftKey
+      ) {
+        e.preventDefault()
+        handleUndoDelete()
+        return
+      }
+
+      if (isTypingInOtherInput || editingId) return
+
+      const focusedIdx = focusedId
+        ? visibleNodes.findIndex((item) => item.node.id === focusedId)
+        : -1
+      const focusedNode =
+        focusedIdx >= 0 ? visibleNodes[focusedIdx].node : undefined
+
+      if (e.key === "Escape") {
+        if (focusedId) {
+          e.preventDefault()
+          setFocusedId(null)
+          return
+        }
+        if (zoomRootId) {
+          e.preventDefault()
+          setZoomRootId(null)
+          return
+        }
+      }
+
+      if (focusedNode) {
+        if (isMod && e.key === ".") {
+          e.preventDefault()
+          handleZoom(focusedNode.id)
+          return
+        }
+        if (isMod && e.key === "ArrowUp") {
+          e.preventDefault()
+          handleReorderSibling(focusedNode, "up")
+          return
+        }
+        if (isMod && e.key === "ArrowDown") {
+          e.preventDefault()
+          handleReorderSibling(focusedNode, "down")
+          return
+        }
+        if (e.key === "Tab") {
+          e.preventDefault()
+          if (e.shiftKey) {
+            handleOutdent(focusedNode, focusedNode.content)
+          } else {
+            handleIndent(focusedNode, focusedNode.content)
+          }
+          return
+        }
+        if (e.key === "Enter") {
+          e.preventDefault()
+          if (e.shiftKey) {
+            handleAddChild(focusedNode)
+          } else {
+            setEditingId(focusedNode.id)
+          }
+          return
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault()
+          if (focusedIdx < visibleNodes.length - 1) {
+            setFocusedId(visibleNodes[focusedIdx + 1].node.id)
+          }
+          return
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault()
+          if (focusedIdx > 0) {
+            setFocusedId(visibleNodes[focusedIdx - 1].node.id)
+          }
+          return
+        }
+      } else if (visibleNodes.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault()
+          setFocusedId(visibleNodes[0].node.id)
+          return
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault()
+          setFocusedId(visibleNodes[visibleNodes.length - 1].node.id)
+          return
+        }
+        if (e.key === "Enter") {
+          e.preventDefault()
+          const firstId = visibleNodes[0].node.id
+          setFocusedId(firstId)
+          setEditingId(firstId)
+          return
+        }
+      } else if (
+        e.key === "ArrowDown" ||
+        e.key === "ArrowUp" ||
+        e.key === "Enter"
+      ) {
+        e.preventDefault()
+        handleAddRootNode()
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown)
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
+  }, [
+    editingId,
+    focusedId,
+    zoomRootId,
+    visibleNodes,
+    handleUndoDelete,
+    handleAddRootNode,
+    handleZoom,
+    handleReorderSibling,
+    handleIndent,
+    handleOutdent,
+    handleAddChild,
+  ])
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -465,8 +583,10 @@ function ListDetailContent({ listId }: { listId: string }) {
                   depth={depth}
                   hasChildren={hasChildren}
                   isCollapsed={collapsedIds.has(node.id)}
+                  isFocused={focusedId === node.id}
                   isEditing={editingId === node.id}
                   resolvedTheme={resolvedTheme}
+                  onFocus={handleFocusNode}
                   onStartEdit={handleStartEdit}
                   onCommitContent={handleCommitContent}
                   onCancelEdit={handleCancelEdit}
@@ -479,6 +599,8 @@ function ListDetailContent({ listId }: { listId: string }) {
                   onReorderSibling={handleReorderSibling}
                   onZoom={handleZoom}
                   onDeleteEmpty={handleDeleteEmpty}
+                  canUndoDelete={deletedHistory.length > 0}
+                  onUndoDelete={handleUndoDelete}
                 />
               ))}
             </SortableContext>

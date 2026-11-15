@@ -16,8 +16,10 @@ interface NodeRowProps {
   depth: number
   hasChildren: boolean
   isCollapsed: boolean
+  isFocused: boolean
   isEditing: boolean
   resolvedTheme?: string
+  onFocus: (node: OutlinerNode) => void
   onStartEdit: (node: OutlinerNode) => void
   onCommitContent: (node: OutlinerNode, content: string) => void
   onCancelEdit: () => void
@@ -34,6 +36,8 @@ interface NodeRowProps {
   onReorderSibling: (node: OutlinerNode, direction: "up" | "down") => void
   onZoom: (nodeId: string) => void
   onDeleteEmpty: (node: OutlinerNode) => void
+  canUndoDelete?: boolean
+  onUndoDelete?: () => void
 }
 
 export const NodeRow = memo(function NodeRow({
@@ -41,8 +45,10 @@ export const NodeRow = memo(function NodeRow({
   depth,
   hasChildren,
   isCollapsed,
+  isFocused,
   isEditing,
   resolvedTheme,
+  onFocus,
   onStartEdit,
   onCommitContent,
   onCancelEdit,
@@ -55,6 +61,8 @@ export const NodeRow = memo(function NodeRow({
   onReorderSibling,
   onZoom,
   onDeleteEmpty,
+  canUndoDelete,
+  onUndoDelete,
 }: NodeRowProps) {
   const [draftContent, setDraftContent] = useState(node.content)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -159,6 +167,20 @@ export const NodeRow = memo(function NodeRow({
       return
     }
 
+    if (
+      isMod &&
+      e.key.toLowerCase() === "z" &&
+      !e.shiftKey &&
+      canUndoDelete &&
+      draftContent === node.content
+    ) {
+      e.preventDefault()
+      e.stopPropagation()
+      skipBlurCommitRef.current = true
+      onUndoDelete?.()
+      return
+    }
+
     if (e.key === "Backspace" && draftContent === "") {
       e.preventDefault()
       skipBlurCommitRef.current = true
@@ -178,7 +200,12 @@ export const NodeRow = memo(function NodeRow({
     <div ref={setNodeRef} style={style}>
       <div
         style={{ paddingLeft: `${depth * 20}px` }}
-        className="flex items-center gap-1 group min-h-[24px] py-0.5 rounded-sm hover:bg-accent/30 transition-colors"
+        data-focused={isFocused ? "true" : undefined}
+        data-editing={isEditing ? "true" : undefined}
+        className={cn(
+          "flex items-center gap-1 group min-h-[24px] py-0.5 rounded-sm hover:bg-accent/30 transition-colors",
+          isFocused && !isEditing && "bg-accent/50 ring-1 ring-ring/30",
+        )}
       >
         <div className="flex items-center gap-0.5 w-10 justify-end shrink-0">
           <button
@@ -254,8 +281,9 @@ export const NodeRow = memo(function NodeRow({
           ) : (
             <button
               type="button"
-              className="text-sm text-left leading-tight whitespace-pre-wrap cursor-text px-1 -ml-1 transition-colors w-full min-h-[1.35rem] flex items-center text-foreground/95"
-              onClick={() => onStartEdit(node)}
+              className="text-sm text-left leading-tight whitespace-pre-wrap cursor-default px-1 -ml-1 transition-colors w-full min-h-[1.35rem] flex items-center text-foreground/95"
+              onClick={() => onFocus(node)}
+              onDoubleClick={() => onStartEdit(node)}
             >
               {node.content || (
                 <span className="text-muted-foreground/50 italic">Empty</span>

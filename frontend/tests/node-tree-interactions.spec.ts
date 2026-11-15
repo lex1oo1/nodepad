@@ -18,8 +18,8 @@ test.describe("Node tree interactions", () => {
     const targetNode = page.getByRole("button", { name: "Activities" })
     await expect(targetNode).toBeVisible()
 
-    // 2. Start editing
-    await targetNode.click()
+    // 2. Start editing via double-click
+    await targetNode.dblclick()
     const input = page.locator("input").first()
     await expect(input).toBeFocused()
 
@@ -57,7 +57,7 @@ test.describe("Node tree interactions", () => {
 
   test("Tab should not indent beyond prev.level + 1", async ({ page }) => {
     const targetNode = page.getByRole("button", { name: "Activities" })
-    await targetNode.click()
+    await targetNode.dblclick()
     const input = page.locator("input").first()
 
     // Press Tab twice
@@ -77,31 +77,130 @@ test.describe("Node tree interactions", () => {
     expect(parseInt(padding, 10)).toBe(20) // Only one level deeper than "Logistical Prep"
   })
 
-  test("ArrowDown when unfocused should focus top node", async ({ page }) => {
+  test("ArrowDown when unfocused should focus top node and Enter enters edit mode", async ({
+    page,
+  }) => {
     // Ensure no input is focused
     await page.keyboard.press("Escape")
     await expect(page.locator("input")).toHaveCount(0)
 
-    // Press ArrowDown
+    // Press ArrowDown -> focuses top node without entering edit mode
     await page.keyboard.press("ArrowDown")
+    await expect(page.locator("input")).toHaveCount(0)
+    await expect(page.locator("div.group[data-focused='true']")).toHaveCount(1)
 
-    // The first visible node's input should now be visible and focused
+    // Press Enter -> enters edit mode on the focused node
+    await page.keyboard.press("Enter")
     const input = page.locator("input").first()
     await expect(input).toBeVisible()
     await expect(input).toBeFocused()
   })
 
-  test("ArrowUp when unfocused should focus bottom node", async ({ page }) => {
+  test("ArrowUp when unfocused should focus bottom node and Enter enters edit mode", async ({
+    page,
+  }) => {
     // Ensure no input is focused
     await page.keyboard.press("Escape")
     await expect(page.locator("input")).toHaveCount(0)
 
-    // Press ArrowUp
+    // Press ArrowUp -> focuses bottom node without entering edit mode
     await page.keyboard.press("ArrowUp")
+    await expect(page.locator("input")).toHaveCount(0)
+    await expect(page.locator("div.group[data-focused='true']")).toHaveCount(1)
 
-    // An input should now be visible and focused
+    // Press Enter -> enters edit mode on the focused node
+    await page.keyboard.press("Enter")
     const input = page.locator("input").first()
     await expect(input).toBeVisible()
     await expect(input).toBeFocused()
+  })
+
+  test("Single click focuses node, double click or Enter edits node", async ({
+    page,
+  }) => {
+    const targetNode = page.getByRole("button", { name: "Logistical Prep" })
+    await targetNode.click()
+
+    // Single click only focuses, does not open input
+    await expect(page.locator("input")).toHaveCount(0)
+    await expect(
+      page
+        .locator("div.group[data-focused='true']")
+        .filter({ hasText: "Logistical Prep" }),
+    ).toBeVisible()
+
+    // Pressing Enter on focused node enters edit mode
+    await page.keyboard.press("Enter")
+    const input = page.locator("input").first()
+    await expect(input).toBeVisible()
+    await expect(input).toBeFocused()
+    await expect(input).toHaveValue("Logistical Prep")
+
+    // Pressing Escape exits edit mode back to focus mode
+    await input.press("Escape")
+    await expect(page.locator("input")).toHaveCount(0)
+    await expect(
+      page
+        .locator("div.group[data-focused='true']")
+        .filter({ hasText: "Logistical Prep" }),
+    ).toBeVisible()
+
+    // Double click enters edit mode
+    await targetNode.dblclick()
+    await expect(page.locator("input").first()).toBeFocused()
+  })
+
+  test("Deleting node text then pressing Backspace deletes node and Ctrl+Z restores it", async ({
+    page,
+  }) => {
+    const firstNode = page.getByRole("button", { name: "Logistical Prep" })
+    await firstNode.dblclick()
+    const firstInput = page.locator("input").first()
+    await expect(firstInput).toBeFocused()
+
+    // Create two sibling nodes below
+    await firstInput.press("Enter")
+    let activeInput = page.locator("input").first()
+    await activeInput.fill("Temp Sibling 1")
+    await activeInput.press("Enter")
+    activeInput = page.locator("input").first()
+    await activeInput.fill("Temp Sibling 2")
+
+    // Delete "Temp Sibling 2" text, then press Backspace one more time to delete the node
+    await activeInput.press("Control+a")
+    await activeInput.press("Backspace")
+    await expect(activeInput).toHaveValue("")
+    await activeInput.press("Backspace")
+    await expect(
+      page.getByRole("button", { name: "Temp Sibling 2" }),
+    ).toHaveCount(0)
+
+    // Delete "Temp Sibling 1" text, then press Backspace one more time to delete the node
+    activeInput = page.locator("input").first()
+    await expect(activeInput).toBeFocused()
+    await expect(activeInput).toHaveValue("Temp Sibling 1")
+    await activeInput.press("Control+a")
+    await activeInput.press("Backspace")
+    await expect(activeInput).toHaveValue("")
+    await activeInput.press("Backspace")
+    await expect(
+      page.getByRole("button", { name: "Temp Sibling 1" }),
+    ).toHaveCount(0)
+
+    // Undo twice with Ctrl+Z to restore both deleted siblings
+    await page.keyboard.press("Control+z")
+    await expect(page.locator("input").first()).toHaveValue("Temp Sibling 1")
+
+    await page.keyboard.press("Control+z")
+    await expect(page.locator("input").first()).toHaveValue("Temp Sibling 2")
+
+    // Exit edit mode and verify both nodes are visible
+    await page.keyboard.press("Escape")
+    await expect(
+      page.getByRole("button", { name: "Temp Sibling 1" }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Temp Sibling 2" }),
+    ).toBeVisible()
   })
 })
