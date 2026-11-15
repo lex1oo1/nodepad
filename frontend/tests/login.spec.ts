@@ -29,6 +29,14 @@ test("Log In button is visible", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
 })
 
+test("Try Demo Session button is visible", async ({ page }) => {
+  await page.goto("/login")
+
+  await expect(
+    page.getByRole("button", { name: "Try Demo Session" }),
+  ).toBeVisible()
+})
+
 test("Forgot Password link is visible", async ({ page }) => {
   await page.goto("/login")
 
@@ -43,11 +51,9 @@ test("Log in with valid email and password ", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/")
+  await page.waitForURL("/lists")
 
-  await expect(
-    page.getByText("Welcome back, nice to see you again!"),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Lists" })).toBeVisible()
 })
 
 test("Log in with invalid email", async ({ page }) => {
@@ -92,11 +98,9 @@ test("Successful log out", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/")
+  await page.waitForURL("/lists")
 
-  await expect(
-    page.getByText("Welcome back, nice to see you again!"),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Lists" })).toBeVisible()
 
   await page.getByTestId("user-menu").click()
   await page.getByRole("menuitem", { name: "Log out" }).click()
@@ -109,11 +113,9 @@ test("Logged-out user cannot access protected routes", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/")
+  await page.waitForURL("/lists")
 
-  await expect(
-    page.getByText("Welcome back, nice to see you again!"),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Lists" })).toBeVisible()
 
   await page.getByTestId("user-menu").click()
   await page.getByRole("menuitem", { name: "Log out" }).click()

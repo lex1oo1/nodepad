@@ -3,7 +3,7 @@ import { FaGithub, FaLinkedinIn } from "react-icons/fa"
 const socialLinks = [
   {
     icon: FaGithub,
-    href: "https://github.com/lex-quasarkian/nodepad",
+    href: "https://github.com/lex1oo1/nodepad",
     label: "GitHub",
   },
 

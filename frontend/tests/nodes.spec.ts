@@ -1,31 +1,27 @@
 import { expect, test } from "@playwright/test"
-import { logInUser } from "./utils/user"
+
+test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe("Nodes management", () => {
-  test("Edit a node content via click and Enter", async ({ page }) => {
-    // 1. Login as admin (has the default list from init_db)
-    await logInUser(page, "admin@nodepad.io", "Gr33nWh33lBr!ck")
+  test("Edit a node content via double-click and Enter", async ({ page }) => {
+    // 1. Start a fresh demo session (creates an isolated Chamonix list)
+    await page.goto("/login")
+    await page.getByRole("button", { name: "Try Demo Session" }).click()
+    await page.waitForURL(/\/lists\/.+/)
 
-    // 2. Go to lists
-    await page.goto("/lists")
-
-    // 3. Find the Chamonix list and navigate to it
-    await expect(page.getByText("Weekend Getaway: Chamonix")).toBeVisible()
-    const listRow = page
-      .getByRole("row")
-      .filter({ hasText: "Weekend Getaway: Chamonix" })
-    const listId = await listRow.locator("td").first().innerText()
-    await page.getByRole("link", { name: listId }).click()
-
-    // 4. Wait for nodes to load
+    // 2. Wait for nodes to load
     await expect(page.getByText("Logistical Prep")).toBeVisible()
 
-    // 5. Click on a node to edit (Confirm Airbnb...)
+    // 5. Single-click focuses the node without entering edit mode
     const nodeText = "Confirm Airbnb check-in time"
     const nodeElement = page.getByRole("button", { name: nodeText })
     await nodeElement.click()
+    await expect(page.locator("input")).toHaveCount(0)
 
-    // 6. Type new text and press Enter
+    // 6. Double-click on the node to enter edit mode
+    await nodeElement.dblclick()
+
+    // 7. Type new text, press Enter to save, and Escape to exit edit mode on the new sibling
     const newText = "Confirm Airbnb check-in time (Updated)"
     // The input should appear with the current text as value
     const input = page.locator("input")
@@ -33,11 +29,12 @@ test.describe("Nodes management", () => {
     await input.fill(newText)
     await input.press("Enter")
 
-    // 7. Verify the input is gone and the new text is visible
-    await expect(input).not.toBeVisible()
+    // 8. Verify the new text is visible and exit edit mode on the newly created sibling
     await expect(page.getByRole("button", { name: newText })).toBeVisible()
+    await page.locator("input").first().press("Escape")
+    await expect(page.locator("input")).toHaveCount(0)
 
-    // 8. Reload the page to verify persistence
+    // 9. Reload the page to verify persistence
     await page.reload()
     await expect(page.getByRole("button", { name: newText })).toBeVisible()
   })

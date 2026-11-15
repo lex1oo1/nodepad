@@ -9,6 +9,12 @@ export type Body_login_login_access_token = {
     client_secret?: (string | null);
 };
 
+export type DemoSession = {
+    access_token: string;
+    token_type?: string;
+    list_id: string;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
@@ -177,6 +183,12 @@ export type ListsDeleteListData = {
 
 export type ListsDeleteListResponse = (Message);
 
+export type LoginStartDemoSessionResponse = (DemoSession);
+
+export type LoginCleanupDemoSessionResponse = (Message);
+
+export type LoginResetDemoSessionResponse = (DemoSession);
+
 export type LoginLoginAccessTokenData = {
     formData: Body_login_login_access_token;
 };
@@ -217,6 +229,12 @@ export type NodesPatchNodeData = {
 
 export type NodesPatchNodeResponse = (Node);
 
+export type NodesDeleteNodeData = {
+    id: string;
+};
+
+export type NodesDeleteNodeResponse = (Message);
+
 export type NodesReorderNodeData = {
     afterId?: (string | null);
     beforeId?: (string | null);
@@ -224,12 +242,6 @@ export type NodesReorderNodeData = {
 };
 
 export type NodesReorderNodeResponse = (Node);
-
-export type NodesDeleteNodeData = {
-    id: string;
-};
-
-export type NodesDeleteNodeResponse = (Message);
 
 export type PrivateCreateUserData = {
     requestBody: PrivateUserCreate;

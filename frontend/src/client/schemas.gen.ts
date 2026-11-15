@@ -57,6 +57,28 @@ export const Body_login_login_access_tokenSchema = {
     title: 'Body_login-login_access_token'
 } as const;
 
+export const DemoSessionSchema = {
+    properties: {
+        access_token: {
+            type: 'string',
+            title: 'Access Token'
+        },
+        token_type: {
+            type: 'string',
+            title: 'Token Type',
+            default: 'bearer'
+        },
+        list_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'List Id'
+        }
+    },
+    type: 'object',
+    required: ['access_token', 'list_id'],
+    title: 'DemoSession'
+} as const;
+
 export const HTTPValidationErrorSchema = {
     properties: {
         detail: {

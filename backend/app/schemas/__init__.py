@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, Field
 
 from .lists import (
@@ -35,6 +37,12 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class DemoSession(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    list_id: uuid.UUID
+
+
 # Contents of JWT token
 class TokenPayload(BaseModel):
     sub: str | None = None
@@ -66,6 +74,7 @@ __all__ = [
     "UserUpdateMe",
     "Message",
     "Token",
+    "DemoSession",
     "TokenPayload",
     "NewPassword",
 ]
